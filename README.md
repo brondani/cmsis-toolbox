@@ -11,6 +11,8 @@ The [**documentation**](./docs/installation.md) explains the download, installat
 
 The CMSIS-Toolbox includes:
 
+This installer provides:
+
 Tool                     | Binary         | Description                                         | Origin Repo
 :------------------------|:---------------|:----------------------------------------------------|:------------------------------------------------------------------
 Package Installer        | cpackget       | Install packs into local environment                | [Open-CMSIS-Pack/cpackget](https://github.com/Open-CMSIS-Pack/cpackget)
