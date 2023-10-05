@@ -40,7 +40,7 @@ jobs:
         uses: dsaltares/fetch-gh-release-asset@master
         with:
           repo: "brondani/devtools"
-          version: tags/tools/buildmgr/2.2.0-extgen1
+          version: tags/tools/buildmgr/2.2.0-extgen2
           file: cbuild_install.sh
           target: toolbox/cbuild/cbuild_install.sh
           token: ${{ secrets.GITHUB_TOKEN }}
