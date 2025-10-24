@@ -28,7 +28,7 @@ concurrency:
 jobs:
   matrix_prep:
     runs-on: ubuntu-latest
-    if: github.repository == 'Open-CMSIS-Pack/cmsis-toolbox'
+    if: github.repository == 'brondani/cmsis-toolbox'
     outputs:
       build: ${{ steps.build-matrix.outputs.matrix }}
       test: ${{ steps.test-matrix.outputs.matrix }}
@@ -79,7 +79,7 @@ jobs:
         id: get_run_id
         shell: bash
         run: |
-          RUN_ID=$(gh run list --limit 1 --workflow nightly --repo Open-CMSIS-Pack/devtools --json databaseId --jq '.[0].databaseId')
+          RUN_ID=$(gh run list --limit 1 --workflow nightly --repo brondani/devtools --json databaseId --jq '.[0].databaseId')
           echo "NIGHTLY_RUN_ID=$RUN_ID" >> $GITHUB_OUTPUT
 
       # Clean Go mod cache
@@ -218,13 +218,13 @@ jobs:
             -o build/cbridge${{ matrix.binary_extension }} ./cmd
 
       # Download projmgr and cbuildgen from nightly
-      - name: Download Open-CMSIS-Pack/devtools nightly artifacts
+      - name: Download brondani/devtools nightly artifacts
         shell: bash
         run : |
-          gh run download -D projmgr-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n projmgr-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
-          gh run download -D cbuildgen-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n cbuildgen-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
-          gh run download -D packchk-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n packchk-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
-          gh run download -D svdconv-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n svdconv-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
+          gh run download -D projmgr-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n projmgr-${{ matrix.target }}-${{ matrix.arch }} -R brondani/devtools
+          gh run download -D cbuildgen-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n cbuildgen-${{ matrix.target }}-${{ matrix.arch }} -R brondani/devtools
+          gh run download -D packchk-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n packchk-${{ matrix.target }}-${{ matrix.arch }} -R brondani/devtools
+          gh run download -D svdconv-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n svdconv-${{ matrix.target }}-${{ matrix.arch }} -R brondani/devtools
 
       - name: Unzip files
         shell: bash
@@ -241,10 +241,10 @@ jobs:
             unzip ${svdconv_dir}/svdconv-\*-${{ matrix.target }}-${{ matrix.arch }}.zip -d svdconv
           fi
 
-      - name: Checkout Open-CMSIS-PACK/devtools repo
+      - name: Checkout brondani/devtools repo
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          repository: Open-CMSIS-PACK/devtools
+          repository: brondani/devtools
           path: devtools
 
       - name: Copy Files
