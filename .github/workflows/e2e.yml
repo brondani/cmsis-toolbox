@@ -2,6 +2,15 @@ name: E2E
 
 on:
   workflow_dispatch:
+    inputs:
+      buildmgr_repository:
+        description: 'Repository containing the buildmgr release (for example brondani/devtools)'
+        type: string
+        default: Open-CMSIS-Pack/devtools
+      buildmgr_release:
+        description: 'Buildmgr release tag (for example tools/buildmgr/2.12.0-dev0); blank uses nightly artifacts'
+        type: string
+        default: ''
   push:
     branches: [ main ]
   pull_request:
@@ -30,5 +39,5 @@ jobs:
     uses: ./.github/workflows/shared-e2e.yml
     with:
       retention-days: 1
-    secrets:
-      IAR_LMS_BEARER_TOKEN: ${{ secrets.IAR_TOKEN }}
+      buildmgr_repository: ${{ inputs.buildmgr_repository || 'Open-CMSIS-Pack/devtools' }}
+      buildmgr_release: ${{ inputs.buildmgr_release || '' }}

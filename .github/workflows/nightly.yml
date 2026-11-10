@@ -74,8 +74,6 @@ jobs:
     uses: ./.github/workflows/shared-e2e.yml
     with:
       use_nightly_devtools: ${{ github.event_name == 'workflow_dispatch' && inputs.use_nightly_devtools || false }}
-    secrets:
-      IAR_LMS_BEARER_TOKEN: ${{ secrets.IAR_TOKEN }}
 
   performance-check:
     needs: [ test ]

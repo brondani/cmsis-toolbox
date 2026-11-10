@@ -2,9 +2,6 @@ name: Shared E2E Jobs
 
 on:
   workflow_call:
-    secrets:
-      IAR_LMS_BEARER_TOKEN:
-        required: true
     inputs:
       retention-days:
         required: false
@@ -15,6 +12,16 @@ on:
         required: false
         type: boolean
         default: false
+      buildmgr_repository:
+        description: 'Repository containing the buildmgr release'
+        required: false
+        type: string
+        default: Open-CMSIS-Pack/devtools
+      buildmgr_release:
+        description: 'Buildmgr release tag; blank uses nightly artifacts'
+        required: false
+        type: string
+        default: ''
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -259,9 +266,24 @@ jobs:
         shell: bash
         run : |
           gh run download -D projmgr-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n projmgr-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
-          gh run download -D cbuildgen-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n cbuildgen-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
           gh run download -D packchk-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n packchk-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
           gh run download -D svdconv-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n svdconv-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
+
+      - name: Download cbuildgen nightly artifact
+        if: ${{ inputs.buildmgr_release == '' }}
+        shell: bash
+        run: |
+          gh run download -D cbuildgen-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n cbuildgen-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
+
+      - name: Download and extract buildmgr release
+        if: ${{ inputs.buildmgr_release != '' }}
+        shell: bash
+        env:
+          BUILDMGR_REPOSITORY: ${{ inputs.buildmgr_repository }}
+          BUILDMGR_RELEASE: ${{ inputs.buildmgr_release }}
+        run: |
+          gh release download "$BUILDMGR_RELEASE" --repo "$BUILDMGR_REPOSITORY" --pattern cbuild_install.sh --dir buildmgr-release
+          bash buildmgr-release/cbuild_install.sh -x buildmgr
 
       - name: Unzip files
         shell: bash
@@ -291,7 +313,6 @@ jobs:
           mkdir -p ./cmsis-toolbox/etc
           mkdir -p ./cmsis-toolbox/doc
           cp ./projmgr-${{ matrix.target }}-${{ matrix.arch }}/csolution${{ matrix.binary_extension }}      ./cmsis-toolbox/bin/csolution${{ matrix.binary_extension }}
-          cp ./cbuildgen-${{ matrix.target }}-${{ matrix.arch }}/cbuildgen${{ matrix.binary_extension }}*   ./cmsis-toolbox/bin/cbuildgen${{ matrix.binary_extension }}
           cp ./packchk/packchk${{ matrix.binary_extension }}                                                ./cmsis-toolbox/bin/packchk${{ matrix.binary_extension }}
           cp ./svdconv/svdconv${{ matrix.binary_extension }}                                                ./cmsis-toolbox/bin/svdconv${{ matrix.binary_extension }}
           cp ./cbuild/build/cbuild${{ matrix.binary_extension }}                                            ./cmsis-toolbox/bin/cbuild${{ matrix.binary_extension }}
@@ -306,8 +327,19 @@ jobs:
           cp ./vidx2pidx/build/vidx2pidx${{ matrix.binary_extension }}                                      ./cmsis-toolbox/bin/vidx2pidx${{ matrix.binary_extension }}
           cp -r devtools/tools/projmgr/templates/*                ./cmsis-toolbox/etc
           cp -r devtools/tools/projmgr/schemas/*                  ./cmsis-toolbox/etc
-          cp -r devtools/tools/buildmgr/cbuildgen/scripts/*       ./cmsis-toolbox/etc
-          cp -r devtools/tools/buildmgr/cbuildgen/config/*        ./cmsis-toolbox/etc
+          if [ -d buildmgr ]; then
+            case "$RUNNER_OS" in
+              Linux) buildmgr_extension=.lin ;;
+              macOS) buildmgr_extension=.mac ;;
+              Windows) buildmgr_extension=.exe ;;
+            esac
+            cp ./buildmgr/bin/cbuildgen${buildmgr_extension}-${{ matrix.arch }} ./cmsis-toolbox/bin/cbuildgen${{ matrix.binary_extension }}
+            cp -r ./buildmgr/etc/* ./cmsis-toolbox/etc
+          else
+            cp ./cbuildgen-${{ matrix.target }}-${{ matrix.arch }}/cbuildgen${{ matrix.binary_extension }}* ./cmsis-toolbox/bin/cbuildgen${{ matrix.binary_extension }}
+            cp -r devtools/tools/buildmgr/cbuildgen/scripts/* ./cmsis-toolbox/etc
+            cp -r devtools/tools/buildmgr/cbuildgen/config/* ./cmsis-toolbox/etc
+          fi
           curl https://raw.githubusercontent.com/Open-CMSIS-Pack/Open-CMSIS-Pack-Spec/main/schema/PACK.xsd --output ./cmsis-toolbox/etc/PACK.xsd
           curl https://raw.githubusercontent.com/Open-CMSIS-Pack/Open-CMSIS-Pack-Spec/main/schema/PackIndex.xsd --output ./cmsis-toolbox/etc/PackIndex.xsd
           curl https://raw.githubusercontent.com/Open-CMSIS-Pack/debug-adapter-registry/refs/heads/main/registry/debug-adapters.yml --output ./cmsis-toolbox/etc/debug-adapters.yml
@@ -339,13 +371,8 @@ jobs:
       - name: Generate manifest file
         shell: bash
         run: |
-          # Get the toolbox version from the latest semantic version tag
-          BASE_TAG=$(git tag | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
-          if [ -n "$BASE_TAG" ]; then
-            TOOLBOX_VERSION=$(git describe --tags --match "$BASE_TAG")
-          else
-            TOOLBOX_VERSION="untagged"
-          fi
+          # Use csolution's release line without executing a cross-built binary.
+          TOOLBOX_VERSION=$(jq -er '.projmgr | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))' .github/toolbox-components.json)
           echo "Toolbox version: $TOOLBOX_VERSION"
 
           # Set binary extension (default to empty string if not set)
@@ -479,12 +506,11 @@ jobs:
         shell: bash
         continue-on-error: true
         working-directory: ./test
-        env:
-          IAR_LMS_BEARER_TOKEN: ${{ secrets.IAR_LMS_BEARER_TOKEN }}
         run: |
           export PATH="${{steps.toolbox_path.outputs.path}}:$PATH"
           robot --outputdir reports-${{ matrix.target }}-${{ matrix.arch }}-cmake${{ matrix.cmake_version }} \
             --variable TEST_ENV_FILE:test-env-${{ matrix.target }}-${{ matrix.arch }}-cmake${{ matrix.cmake_version }}.md \
+            --variable SKIP_IAR:true \
             --consolewidth=150 --settag ${{ matrix.target }}-${{ matrix.arch }}-cmake${{ matrix.cmake_version }} \
             --name ${{ matrix.target }}-${{ matrix.arch }}-cmake${{ matrix.cmake_version }} \
             ./e2e

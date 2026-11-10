@@ -119,7 +119,7 @@ Run Csolution Project
     Return From Keyword    True
 
 Convert And Filter Contexts
-    [Documentation]    Example test to convert a string to an array, filter it, and join it
+    [Documentation]    Convert contexts to command arguments and filter unsupported toolchains
     [Arguments]        ${all_contexts}
 
     @{contexts}=       Split String    ${all_contexts}    \n
@@ -133,7 +133,7 @@ Convert And Filter Contexts
         ${context_lower}=    Convert To Lower Case    ${context}
         ${is_iar_context}=    Run Keyword And Return Status    Should Contain    ${context_lower}    iar
         ${is_xc_context}=     Run Keyword And Return Status    Should Contain    ${context_lower}    xc
-        ${skip_context}=      Evaluate    $is_arm64 and ($is_iar_context or $is_xc_context)
+        ${skip_context}=      Evaluate    bool(($is_arm64 and $is_xc_context) or ($is_iar_context and str($SKIP_IAR).lower() == "true"))
         IF    not ${skip_context}
             Append To List    ${context_list_args}    -c    ${context}
         END
