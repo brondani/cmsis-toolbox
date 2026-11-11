@@ -3,14 +3,10 @@ name: E2E
 on:
   workflow_dispatch:
     inputs:
-      buildmgr_repository:
-        description: 'Repository containing the buildmgr release (for example brondani/devtools)'
+      cbuild2cmake_ref:
+        description: 'Branch, tag, or commit of Open-CMSIS-Pack/cbuild2cmake to build'
         type: string
-        default: Open-CMSIS-Pack/devtools
-      buildmgr_release:
-        description: 'Buildmgr release tag (for example tools/buildmgr/2.12.0-dev0); blank uses nightly artifacts'
-        type: string
-        default: ''
+        default: refs/heads/apply-preprocessor-options-during
   push:
     branches: [ main ]
   pull_request:
@@ -39,5 +35,4 @@ jobs:
     uses: ./.github/workflows/shared-e2e.yml
     with:
       retention-days: 1
-      buildmgr_repository: ${{ inputs.buildmgr_repository || 'Open-CMSIS-Pack/devtools' }}
-      buildmgr_release: ${{ inputs.buildmgr_release || '' }}
+      cbuild2cmake_ref: ${{ inputs.cbuild2cmake_ref || 'refs/heads/apply-preprocessor-options-during' }}

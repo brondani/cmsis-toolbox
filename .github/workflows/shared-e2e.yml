@@ -12,16 +12,11 @@ on:
         required: false
         type: boolean
         default: false
-      buildmgr_repository:
-        description: 'Repository containing the buildmgr release'
+      cbuild2cmake_ref:
+        description: 'Branch, tag, or commit of Open-CMSIS-Pack/cbuild2cmake to build'
         required: false
         type: string
-        default: Open-CMSIS-Pack/devtools
-      buildmgr_release:
-        description: 'Buildmgr release tag; blank uses nightly artifacts'
-        required: false
-        type: string
-        default: ''
+        default: refs/heads/apply-preprocessor-options-during
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -191,6 +186,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Open-CMSIS-PACK/cbuild2cmake
+          ref: ${{ inputs.cbuild2cmake_ref }}
           path: cbuild2cmake
           fetch-depth: 0
 
@@ -270,20 +266,9 @@ jobs:
           gh run download -D svdconv-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n svdconv-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
 
       - name: Download cbuildgen nightly artifact
-        if: ${{ inputs.buildmgr_release == '' }}
         shell: bash
         run: |
           gh run download -D cbuildgen-${{ matrix.target }}-${{ matrix.arch }} ${{ steps.get_run_id.outputs.NIGHTLY_RUN_ID }} -n cbuildgen-${{ matrix.target }}-${{ matrix.arch }} -R Open-CMSIS-Pack/devtools
-
-      - name: Download and extract buildmgr release
-        if: ${{ inputs.buildmgr_release != '' }}
-        shell: bash
-        env:
-          BUILDMGR_REPOSITORY: ${{ inputs.buildmgr_repository }}
-          BUILDMGR_RELEASE: ${{ inputs.buildmgr_release }}
-        run: |
-          gh release download "$BUILDMGR_RELEASE" --repo "$BUILDMGR_REPOSITORY" --pattern cbuild_install.sh --dir buildmgr-release
-          bash buildmgr-release/cbuild_install.sh -x buildmgr
 
       - name: Unzip files
         shell: bash
@@ -327,19 +312,9 @@ jobs:
           cp ./vidx2pidx/build/vidx2pidx${{ matrix.binary_extension }}                                      ./cmsis-toolbox/bin/vidx2pidx${{ matrix.binary_extension }}
           cp -r devtools/tools/projmgr/templates/*                ./cmsis-toolbox/etc
           cp -r devtools/tools/projmgr/schemas/*                  ./cmsis-toolbox/etc
-          if [ -d buildmgr ]; then
-            case "$RUNNER_OS" in
-              Linux) buildmgr_extension=.lin ;;
-              macOS) buildmgr_extension=.mac ;;
-              Windows) buildmgr_extension=.exe ;;
-            esac
-            cp ./buildmgr/bin/cbuildgen${buildmgr_extension}-${{ matrix.arch }} ./cmsis-toolbox/bin/cbuildgen${{ matrix.binary_extension }}
-            cp -r ./buildmgr/etc/* ./cmsis-toolbox/etc
-          else
-            cp ./cbuildgen-${{ matrix.target }}-${{ matrix.arch }}/cbuildgen${{ matrix.binary_extension }}* ./cmsis-toolbox/bin/cbuildgen${{ matrix.binary_extension }}
-            cp -r devtools/tools/buildmgr/cbuildgen/scripts/* ./cmsis-toolbox/etc
-            cp -r devtools/tools/buildmgr/cbuildgen/config/* ./cmsis-toolbox/etc
-          fi
+          cp ./cbuildgen-${{ matrix.target }}-${{ matrix.arch }}/cbuildgen${{ matrix.binary_extension }}* ./cmsis-toolbox/bin/cbuildgen${{ matrix.binary_extension }}
+          cp -r devtools/tools/buildmgr/cbuildgen/scripts/* ./cmsis-toolbox/etc
+          cp -r devtools/tools/buildmgr/cbuildgen/config/* ./cmsis-toolbox/etc
           curl https://raw.githubusercontent.com/Open-CMSIS-Pack/Open-CMSIS-Pack-Spec/main/schema/PACK.xsd --output ./cmsis-toolbox/etc/PACK.xsd
           curl https://raw.githubusercontent.com/Open-CMSIS-Pack/Open-CMSIS-Pack-Spec/main/schema/PackIndex.xsd --output ./cmsis-toolbox/etc/PackIndex.xsd
           curl https://raw.githubusercontent.com/Open-CMSIS-Pack/debug-adapter-registry/refs/heads/main/registry/debug-adapters.yml --output ./cmsis-toolbox/etc/debug-adapters.yml
